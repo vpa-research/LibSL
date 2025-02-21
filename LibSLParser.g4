@@ -1,7 +1,5 @@
 parser grammar LibSLParser;
 
-@header {package org.jetbrains.research.libsl;}
-
 options { tokenVocab = LibSLLexer; }
 
 /*

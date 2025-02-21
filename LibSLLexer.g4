@@ -1,7 +1,5 @@
 lexer grammar LibSLLexer;
 
-@header {package org.jetbrains.research.libsl;}
-
 SEMICOLON : ';' ;
 
 ASSIGN_OP : '=' ;
