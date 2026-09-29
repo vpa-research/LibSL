@@ -1,544 +1,687 @@
 parser grammar LibSLParser;
 
-options { tokenVocab = LibSLLexer; }
+options {
+    tokenVocab = LibSLLexer;
+}
 
-/*
- * entry rule
- * specification starts with header block ('libsl', 'library' and other keywords), then
- * semantic types section and declarations (automata and extension functions)
- */
 file
-   :   header?
-       globalStatement*
-       EOF
-   ;
+    :   header?
+        decls+=globalDecl*
+        EOF
+    ;
 
-globalStatement
-   :   ImportStatement
-   |   IncludeStatement
-   |   typesSection
-   |   typealiasStatement
-   |   typeDefBlock
-   |   enumBlock
-   |   annotationDecl
-   |   actionDecl
-   |   topLevelDecl
-   ;
+header
+    :   LIBSL libslVersion=StringLit SEMICOLON
+        LIBRARY libraryName=ident
+        (VERSION version=StringLit)?
+        (LANGUAGE language=StringLit)?
+        (URL url=StringLit)?
+        SEMICOLON
+    ;
 
-topLevelDecl
-   :   automatonDecl
-   |   functionDecl
-   |   variableDecl
-   ;
+globalDecl
+    :   importDecl # GlobalDeclImport
+    |   includeDecl # GlobalDeclInclude
+    |   semanticTypeSectionDecl # GlobalDeclSemanticTypeSection
+    |   typeAliasDecl # GlobalDeclTypeAlias
+    |   structDecl # GlobalDeclStruct
+    |   enumDecl # GlobalDeclEnum
+    |   annotationDecl # GlobalDeclAnnotation
+    |   actionDecl # GlobalDeclAction
+    |   automatonDecl # GlobalDeclAutomaton
+    |   functionDecl # GlobalDeclFunction
+    |   procDecl # GlobalDeclProc
+    |   predDecl # GlobalDeclPred
+    |   variableDecl # GlobalDeclVariable
+    ;
 
-/*
- * header section
- * includes 'libsl' keyword with LibSL version, 'library' keyword with name of the library, and any of these optionally:
- * 'version', 'language' and 'url'
- */
-header:
-   (LIBSL lslver=DoubleQuotedString SEMICOLON)
-   (LIBRARY libraryName=Identifier)
-   (VERSION ver = DoubleQuotedString)?
-   (LANGUAGE lang=DoubleQuotedString)?
-   (URL link=DoubleQuotedString)?
-   SEMICOLON;
+importDecl
+    :   IMPORT path SEMICOLON
+    ;
 
-/* typealias statement
- * syntax: typealias name = origintlType
- */
-typealiasStatement
-   :   annotationUsage* TYPEALIAS left=typeIdentifier ASSIGN_OP right=typeIdentifier SEMICOLON
-   ;
+includeDecl
+    :   INCLUDE path SEMICOLON
+    ;
 
-/* type define block
- * syntax: type full.name { field1: Type; field2: Type; ... }
- */
-typeDefBlock
-   :   annotationUsage* TYPE type=typeIdentifier targetType? whereConstraints? (L_BRACE typeDefBlockStatement* R_BRACE)?
-   ;
+path
+    :   StringLit # PathStringLit
+    |   BarePath # PathBare
+    ;
 
-targetType
-   :   (IS typeIdentifier)? for=Identifier typeList
-   ;
-
-
-typeList
-   :  typeIdentifier (COMMA typeIdentifier)*
-   ;
-
-typeDefBlockStatement
-   :   variableDecl
-   |   functionDecl
-   ;
-
-/* enum block
- * syntax: enum Name { Variant1=0; Variant2=1; ... }
- */
-enumBlock
-   :   annotationUsage* ENUM typeIdentifier L_BRACE enumBlockStatement* R_BRACE
-   ;
-
-enumBlockStatement
-   :   Identifier ASSIGN_OP integerNumber SEMICOLON
-   ;
-
-/* semantic types section
- * syntax types { semanticTypeDeclaration1; semanticTypeDeclaration2; ... }
- */
-typesSection
-   :   TYPES L_BRACE semanticTypeDecl* R_BRACE
-   ;
+semanticTypeSectionDecl
+    :   TYPES
+        L_BRACE decls+=semanticTypeDecl* R_BRACE
+    ;
 
 semanticTypeDecl
-   :    simpleSemanticType
-   |    enumSemanticType
-   ;
+    :   annotations+=annotation*
+        typeName=qualifiedTypeName
+        L_PAREN realType=typeExpr R_PAREN
+        semanticTypeDef
+    ;
 
-/* simple semantic type
- * syntax: semanticTypeName (realTypeName);
- */
-simpleSemanticType
-   :   annotationUsage* semanticName=typeIdentifier L_BRACKET realName=typeIdentifier R_BRACKET SEMICOLON
-   ;
+semanticTypeDef
+    :   SEMICOLON # SemanticTypeDefSimple
+    |   L_BRACE values+=enumSemanticTypeValue* R_BRACE # SemanticTypeDefEnum
+    ;
 
-/* block semantic type
- * syntax: semanticTypeName (realTypeName) {variant1: 0; variant2: 1; ...};
- */
-enumSemanticType
-   :   annotationUsage* semanticName=Identifier L_BRACKET realName=typeIdentifier R_BRACKET L_BRACE enumSemanticTypeEntry+ R_BRACE
-   ;
+enumSemanticTypeValue
+    :   name=ident
+        COLON value=atomicExpr
+        SEMICOLON
+    ;
 
-enumSemanticTypeEntry
-   :   Identifier COLON expressionAtomic SEMICOLON
-   ;
+typeAliasDecl
+    :   annotations+=annotation*
+        TYPEALIAS typeName=qualifiedTypeName
+        EQ def=typeExpr
+        SEMICOLON
+    ;
 
-/* annotation declaration
- * syntax: annotation Something(
- *             variable1: int = 0,
- *             variable2: int = 1
- *         );
- */
+structDecl
+    :   annotations+=annotation*
+        TYPE typeName=qualifiedTypeName
+        targetType=structTargetType?
+        typeConstraints=whereClause?
+        (L_BRACE decls+=structDefDecl* R_BRACE)?
+    ;
+
+structTargetType
+    :   (IS isType=typeExpr)?
+        FOR forTypes=typeExprList COMMA?
+    ;
+
+structDefDecl
+    :   variableDecl # StructDefDeclVariable
+    |   functionDecl # StructDefDeclFunction
+    |   procDecl # StructDefDeclProc
+    |   predDecl # StructDefDeclPred
+    ;
+
+enumDecl
+    :   annotations+=annotation*
+        ENUM typeName=qualifiedTypeName
+        L_BRACE variants+=enumDeclVariant* R_BRACE
+    ;
+
+enumDeclVariant
+    :   name=ident EQ value=signedIntLit SEMICOLON
+    ;
+
+signedIntLit
+    :   sign?
+        lit=IntegerLit
+    ;
+
+sign
+    :   MINUS # MinusSign
+    |   PLUS # PlusSign
+    ;
+
 annotationDecl
-   :   ANNOTATION name=Identifier L_BRACKET annotationDeclParams? R_BRACKET SEMICOLON
-   ;
+    :   ANNOTATION name=ident
+        L_PAREN (params=annotationParamList COMMA?)? R_PAREN
+        SEMICOLON
+    ;
 
-annotationDeclParams
-   :   annotationDeclParamsPart (COMMA annotationDeclParamsPart)* (COMMA)?
-   ;
+annotationParamList
+    :   params+=annotationParam
+        (COMMA params+=annotationParam)*
+    ;
 
-annotationDeclParamsPart
-   :   nameWithType (ASSIGN_OP expression)?
-   ;
+annotationParam
+    :   name=ident
+        COLON type=typeExpr
+        (EQ default=expr)?
+    ;
 
 actionDecl
-   :   annotationUsage*
-   DEFINE ACTION generic? actionName=Identifier L_BRACKET actionDeclParamList? R_BRACKET (COLON actionType=typeIdentifier)? whereConstraints? SEMICOLON
-   ;
+    :   annotations+=annotation*
+        DEFINE ACTION name=ident
+        typeParams=generics?
+        L_PAREN (params=actionParamList COMMA?)? R_PAREN
+        (COLON retType=typeExpr)?
+        typeConstrants=whereClause?
+        SEMICOLON
+    ;
 
-actionDeclParamList
-   :   actionParameter (COMMA actionParameter)* (COMMA)?
-   ;
+actionParamList
+    :   params+=actionParam
+        (COMMA params+=actionParam)*
+    ;
 
-actionParameter
-   :   annotationUsage* name=Identifier COLON type=typeIdentifier
-   ;
+actionParam
+    :   annotations+=annotation*
+        name=ident
+        COLON type=typeExpr
+    ;
 
-/* automaton declaration
- * syntax: [@Annotation1(param: type)
- *         @Annotation2(param: type]
- *         automaton Name [(constructor vars)] : type { statement1; statement2; ... }
- */
 automatonDecl
-   :   annotationUsage* AUTOMATON CONCEPT? name=periodSeparatedFullName (L_BRACKET constructorVariables* R_BRACKET)?
-   COLON type=typeExpression implementedConcepts*
-   L_BRACE automatonStatement* R_BRACE
-   ;
+    :   annotations+=annotation*
+        AUTOMATON concept=CONCEPT? name=qualifiedTypeName
+        (L_PAREN (constructorVariables=constructorVariableList COMMA?)? R_PAREN)?
+        COLON type=typeExpr
+        (implements=implementedConcepts COMMA?)*
+        typeConstraints=whereClause?
+        L_BRACE decls+=automatonDefDecl* R_BRACE
+    ;
 
-constructorVariables
-   :   annotationUsage* keyword=(VAR|VAL) nameWithType (COMMA)?
-   |   annotationUsage* keyword=(VAR|VAL) nameWithType ASSIGN_OP assignmentRight (COMMA)?
-   ;
+constructorVariableList
+    :   variables+=constructorVariable
+        (COMMA variables+=constructorVariable)*
+    ;
 
-automatonStatement
-   :   automatonStateDecl
-   |   automatonShiftDecl
-   |   constructorDecl
-   |   destructorDecl
-   |   procDecl
-   |   functionDecl
-   |   variableDecl
-   ;
+constructorVariable
+    :   annotations+=annotation*
+        kind=variableKind
+        name=ident
+        COLON type=typeExpr
+        (EQ init=expr)?
+    ;
 
 implementedConcepts
-   :   implements=Identifier concept (COMMA concept)*
-   ;
+    :   IMPLEMENTS concepts+=ident
+        (COMMA concepts+=ident)*
+    ;
 
-concept
-   :   name=Identifier
-   ;
+automatonDefDecl
+    :   stateDecl # AutomatonDefDeclState
+    |   shiftDecl # AutomatonDefDeclShift
+    |   constructorDecl # AutomatonDefDeclConstructor
+    |   destructorDecl # AutomatonDefDeclDestructor
+    |   procDecl # AutomatonDefDeclProc
+    |   predDecl # AutomatonDefDeclPred
+    |   functionDecl # AutomatonDefDeclFunction
+    |   variableDecl # AutomatonDefDeclVariable
+    ;
 
-/* state declaration
- * syntax: one of {initstate; state; finishstate} name;
- */
-automatonStateDecl
-   :   keyword=(INITSTATE | STATE | FINISHSTATE) identifierList SEMICOLON
-   ;
+functionDecl
+    :   annotations+=annotation*
+        modifiers+=functionModifier*
+        FUN
+        (extensionFor=fullName DOT)?
+        method=methodSpec?
+        name=ident
+        typeParams=generics?
+        L_PAREN (params=functionParamList COMMA?)? R_PAREN
+        (COLON retType=typeExpr)?
+        typeConstraints=whereClause?
+        def=functionDef
+    ;
 
-/* shift declaration
- * syntax: shift from -> to(function1; function2(optional arg types); ...)
- * syntax: shift (from1, from2, ...) -> to(function1; function2(optional arg types); ...)
- */
-automatonShiftDecl
-   :   SHIFT from=Identifier MINUS_ARROW to=Identifier BY functionsListPart SEMICOLON
-   |   SHIFT from=Identifier MINUS_ARROW to=Identifier BY L_SQUARE_BRACKET functionsList? R_SQUARE_BRACKET SEMICOLON
-   |   SHIFT from=L_BRACKET identifierList R_BRACKET MINUS_ARROW to=Identifier BY functionsListPart SEMICOLON
-   |   SHIFT from=L_BRACKET identifierList R_BRACKET MINUS_ARROW to=Identifier BY L_SQUARE_BRACKET functionsList? R_SQUARE_BRACKET SEMICOLON
-   ;
+functionModifier
+    :   STATIC # FunctionModifierStatic
+    ;
 
-functionsList
-   :   functionsListPart (COMMA functionsListPart)* (COMMA)?
-   ;
+methodSpec
+    :   ASTERISK DOT
+    ;
 
-functionsListPart
-   :   name=Identifier (L_BRACKET typeIdentifier? (COMMA typeIdentifier)* R_BRACKET)?
-   ;
+functionDef
+    :   L_BRACE body=functionBody R_BRACE # FunctionDefBraced
+    |   SEMICOLON? # FunctionDefSemicolon
+    ;
 
-/* variable declaration with optional initializers
- * syntax: var NAME [= { new AutomatonName(args); atomic }]
- */
+predDecl
+    :   annotations+=annotation*
+        PRED
+        name=ident
+        typeParams=generics?
+        L_PAREN (params=functionParamList COMMA?)? R_PAREN
+        typeConstraints=whereClause?
+        def=blockPredicate?
+    ;
+
 variableDecl
-   :   annotationUsage* keyword=(VAR|VAL) nameWithType SEMICOLON
-   |   annotationUsage* keyword=(VAR|VAL) nameWithType ASSIGN_OP assignmentRight SEMICOLON
-   ;
-
-nameWithType
-   :  name=Identifier COLON type=typeExpression
-   ;
-
-/*
- * syntax: one.two.three<T>
- */
- 
-typeExpression
-   :   typeIdentifier
-   |   typeExpression AMPERSAND  typeExpression
-   |   typeExpression BIT_OR typeExpression
-   ;
- 
-typeIdentifier
-   :   (asterisk=ASTERISK)? name=typeIdentifierName generic?
-   ;
-
-generic
-   :   (L_ARROW typeArgument (COMMA typeArgument)* R_ARROW)
-   ;
-
-typeArgument
-    : typeIdentifier
-    | typeIdentifierBounded
+    :   annotations+=annotation*
+        kind=variableKind
+        name=ident
+        (COLON type=typeExpr)?
+        (EQ init=expr)?
+        SEMICOLON
     ;
 
-typeIdentifierBounded
-    : genericBound typeIdentifier
+variableKind
+    :   VAR # VariableKindVar
+    |   VAL # VariableKindVal
     ;
 
-variableAssignment
-   :   qualifiedAccess op=ASSIGN_OP assignmentRight SEMICOLON
-   |   qualifiedAccess op=(PLUS_EQ | MINUS_EQ | ASTERISK_EQ | SLASH_EQ | PERCENT_EQ) assignmentRight SEMICOLON
-   |   qualifiedAccess op=(AMPERSAND_EQ | OR_EQ | XOR_EQ) assignmentRight SEMICOLON
-   |   qualifiedAccess op=(R_SHIFT_EQ | L_SHIFT_EQ) assignmentRight SEMICOLON
-   ;
+stateDecl
+    :   kind=stateKind
+        names=identList
+        SEMICOLON
+    ;
 
-assignmentRight
-   :   expression
-   ;
+stateKind
+    :   INITSTATE # StateKindInitial
+    |   STATE # StateKindRegular
+    |   FINISHSTATE # StateKindFinal
+    ;
 
-callAutomatonConstructorWithNamedArgs
-   :   NEW name=periodSeparatedFullName generic? L_BRACKET (namedArgs)? R_BRACKET
-   ;
+identList
+    :   names+=ident
+        (COMMA names+=ident)*
+    ;
 
-namedArgs
-   :   argPair (COMMA argPair)* (COMMA)?
-   ;
+shiftDecl
+    :   SHIFT
+        from=shiftSourceState
+        ARROW to=ident
+        BY by=shiftBy
+        SEMICOLON
+    ;
 
-argPair
-   :   name=STATE ASSIGN_OP expressionAtomic
-   |   name=Identifier ASSIGN_OP expression
-   ;
+shiftSourceState
+    :   ident # ShiftSourceStateShorthand
+    |   L_PAREN (states=identList COMMA?)? R_PAREN # ShiftSourceStateList
+    ;
 
-headerWithAsterisk
-   :   ASTERISK DOT
-   ;
+shiftBy
+    :   signature=functionSignature # ShiftByShorthand
+    |   L_BRACKET (signatures=functionSignatureList COMMA?)? R_BRACKET # ShiftByList
+    ;
+
+functionSignatureList
+    :   signatures+=functionSignature
+        (COMMA signatures+=functionSignature)*
+    ;
+
+functionSignature
+    :   name=ident # FunctionSignatureShorthand
+    |   name=ident L_PAREN (params=typeExprList COMMA?)? R_PAREN # FunctionSignatureQualified
+    ;
 
 constructorDecl
-   :   constructorHeader (SEMICOLON | L_BRACE functionBody R_BRACE)
-   ;
-
-constructorHeader
-   :   annotationUsage* CONSTRUCTOR headerWithAsterisk? functionName=Identifier? L_BRACKET functionDeclArgList? R_BRACKET
-   (COLON functionType=typeIdentifier)?
-   ;
+    :   annotations+=annotation*
+        CONSTRUCTOR
+        method=methodSpec?
+        name=ident?
+        L_PAREN (params=functionParamList COMMA?)? R_PAREN
+        (COLON retType=typeExpr)?
+        def=functionDef
+    ;
 
 destructorDecl
-   :   destructorHeader (SEMICOLON | L_BRACE functionBody R_BRACE)?
-   ;
-
-destructorHeader
-   :   annotationUsage* DESTRUCTOR headerWithAsterisk? functionName=Identifier? L_BRACKET functionDeclArgList? R_BRACKET
-   (COLON functionType=typeIdentifier)?
-   ;
+    :   annotations+=annotation*
+        DESTRUCTOR
+        method=methodSpec?
+        name=ident?
+        L_PAREN (params=functionParamList COMMA?)? R_PAREN
+        (COLON retType=typeExpr)?
+        def=functionDef
+    ;
 
 procDecl
-   :   procHeader (SEMICOLON | L_BRACE functionBody R_BRACE)
-   ;
+    :   annotations+=annotation*
+        modifiers+=procModifier*
+        PROC
+        method=methodSpec?
+        name=ident
+        typeParams=generics?
+        L_PAREN (params=functionParamList COMMA?)? R_PAREN
+        (COLON retType=typeExpr)?
+        typeConstraints=whereClause?
+        def=functionDef
+    ;
 
-procHeader
-   :   annotationUsage* PROC headerWithAsterisk? functionName=Identifier generic? L_BRACKET functionDeclArgList? R_BRACKET
-   (COLON functionType=typeExpression)? whereConstraints?
-   ;
-/*
- * syntax: @Annotation
- *         fun name(@annotation arg1: type, arg2: type, ...) [: type] [preambule] { statement1; statement2; ... }
- * In case of declaring extension-function, name must look like Automaton.functionName
- */
-functionDecl
-   :   functionHeader (SEMICOLON | (L_BRACE functionBody R_BRACE)?)
-   ;
+procModifier
+    :   PURE # ProcModifierPure
+    ;
 
-functionHeader
-   :   annotationUsage* modifier=Identifier? FUN (automatonName=periodSeparatedFullName DOT)? headerWithAsterisk? functionName=Identifier generic?
-   L_BRACKET functionDeclArgList? R_BRACKET (COLON functionType=typeExpression)? whereConstraints?
-   ;
+functionParamList
+    :   params+=functionParam
+        (COMMA params+=functionParam)*
+    ;
 
-functionDeclArgList
-   :   parameter (COMMA parameter)*
-   ;
-
-parameter
-   :   annotationUsage* name=Identifier COLON type=typeExpression
-   ;
-
-/* annotation
- * syntax: @annotationName(args)
- */
-annotationUsage
-   :   AT Identifier (L_BRACKET annotationArgs* R_BRACKET)?
-   ;
-
-functionContract
-   :   requiresContract
-   |   ensuresContract
-   |   assignsContract
-   ;
+functionParam
+    :   annotations+=annotation*
+        name=ident
+        COLON type=typeExpr
+    ;
 
 functionBody
-   :   functionContract* functionBodyStatement*
-   ;
+    :   contracts+=contract*
+        stmts+=stmt*
+    ;
 
-functionBodyStatement
-   :   variableAssignment
-   |   variableDecl
-   |   ifStatement
-   |   expression SEMICOLON
-   ;
+contract
+    :   requiresContract # ContractRequires
+    |   ensuresContract # ContractEnsures
+    |   assignsContract # ContractAssigns
+    ;
 
-ifStatement
-   :   IF expression L_BRACE functionBodyStatement* R_BRACE (elseStatement)?
-   |   IF expression functionBodyStatement (elseStatement)?
-   ;
-
-elseStatement
-   :   ELSE L_BRACE functionBodyStatement* R_BRACE
-   |   ELSE functionBodyStatement
-   ;
-
-/* semantic action
- * syntax: action ActionName(args)
- */
-actionUsage
-   :   ACTION Identifier generic? L_BRACKET expressionsList? R_BRACKET
-   ;
-
-procUsage
-   :   qualifiedAccess generic? L_BRACKET expressionsList? R_BRACKET
-   ;
-
-expressionsList
-   :   expression (COMMA expression)* (COMMA)?
-   ;
-
-annotationArgs
-   :   argName? expression (COMMA)?
-   ;
-
-argName
-   :   name=Identifier ASSIGN_OP
-   ;
-
-/* requires contract
- * syntax: requires [name:] condition
- */
 requiresContract
-   :   REQUIRES (name=Identifier COLON)? expression SEMICOLON
-   ;
+    :   REQUIRES
+        (name=ident COLON)?
+        spec=contractPredicate
+    ;
 
-/* ensures contract
- * syntax: ensures [name:] condition
- */
 ensuresContract
-   :   ENSURES (name=Identifier COLON)? expression SEMICOLON
-   ;
+    :   ENSURES
+        (name=ident COLON)?
+        spec=contractPredicate
+    ;
 
-/* assigns contract
- * syntax: assigns [name:] condition
- */
 assignsContract
-   :   ASSIGNS (name=Identifier COLON)? expression SEMICOLON
-   ;
+    :   ASSIGNS
+        (name=ident COLON)?
+        spec=expr
+        SEMICOLON
+    ;
 
-/*
- * expression
- */
-expression
-   :   expressionAtomic
-   // primaryNoNewArray
-   |   qualifiedAccess apostrophe=APOSTROPHE
-   |   qualifiedAccess
-   |   procUsage
-   |   actionUsage
-   |   callAutomatonConstructorWithNamedArgs
-   |   lbracket=L_BRACKET expression rbracket=R_BRACKET
-   |   hasAutomatonConcept
+// the top-level predicate rule used in contract specifications.
+contractPredicate
+    :   blockPredicate # ContractPredicateBlock
+    |   ifPredicate # ContractPredicateIf
+    |   expr SEMICOLON # ContractPredicateExpr
+    ;
 
-   // unaryExpression + unaryExpressionNotPlusMinus
-   |   unaryOp=(PLUS | MINUS | TILDE | EXCLAMATION) expression
+// a predicate or a expression (without a semicolon),
+// used when either is accepted as a part of an outer predicate.
+//
+// NOTE: currently unused.
+exprPredicate
+    :   blockPredicate # ExprPredicateBlock
+    |   expr # ExprPredicateExpr
+    ;
 
-   // castExpression
-   |   expression typeOp=AS typeIdentifier
+// a statement-like predicate that can be used inside block predicates.
+predicate
+    :   blockPredicate # PredicateBlock
+    |   name=ident COLON predicate # PredicateNamed
+    |   variableDecl # PredicateVariableDecl
+    |   ifPredicate # PredicateIf
+    |   expr SEMICOLON # PredicateExpr
+    ;
 
-   // multiplicativeExpression
-   |   expression op=(ASTERISK | SLASH | PERCENT) expression
+blockPredicate
+    :   L_BRACE predicates+=predicate* R_BRACE
+    ;
 
-   // additiveExpression
-   |   expression op=(PLUS | MINUS) expression
+ifPredicate
+    :   IF
+        L_PAREN condition=expr R_PAREN
+        thenBranch=predicate
+        (ELSE elseBranch=predicate)?
+    ;
 
-   // shiftExpression
-   |   expression bitShiftOp expression
+annotation
+    :   AT name=ident
+        (L_PAREN (args=annotationArgList COMMA?)? R_PAREN)?
+    ;
 
-   // relationalExpression
-   |   expression op=(L_ARROW | R_ARROW | L_ARROW_EQ | R_ARROW_EQ) expression
-   |   expression typeOp=IS typeIdentifier
+annotationArgList
+    :   args+=annotationArg
+        (COMMA args+=annotationArg)*
+    ;
 
-   // equalityExpression
-   |   expression op=(EQ | EXCLAMATION_EQ) expression
+annotationArg
+    :   (name=ident EQ)?
+        value=expr
+    ;
 
-   // inclusiveOrExpression
-   |   expression op=BIT_OR expression
-   // exclusiveOrExpression
-   |   expression op=XOR expression
-   // andExpression
-   |   expression op=AMPERSAND expression
+qualifiedTypeName
+    :   typeName=fullName
+        typeParams=generics?
+    ;
 
-   // conditionalOrExpression
-   |   expression op=LOGIC_OR expression
-   // conditionalAndExpression
-   |   expression op=DOUBLE_AMPERSAND expression
-   ;
+fullName
+    :   components+=ident
+        (DOT components+=ident)*
+    ;
 
-hasAutomatonConcept
-   :   qualifiedAccess has=Identifier name=Identifier
-   ;
-
-bitShiftOp
-   :   lShift
-   |   rShift
-   |   uRShift
-   |   uLShift
-   ;
-
-lShift
-   :   L_ARROW L_ARROW
-   ;
-
-rShift
-   :   R_ARROW R_ARROW
-   ;
-
-uRShift
-   :   R_ARROW R_ARROW R_ARROW
-   ;
-
-uLShift
-   :   L_ARROW L_ARROW L_ARROW
-   ;
-
-expressionAtomic
-   :   primitiveLiteral
-   |   arrayLiteral
-   |   qualifiedAccess
-   ;
-
-primitiveLiteral
-   :   integerNumber
-   |   floatNumber
-   |   DoubleQuotedString
-   |   CHARACTER
-   |   bool=(TRUE | FALSE)
-   |   nullLiteral=NULL
-   ;
-
-qualifiedAccess
-   :   periodSeparatedFullName
-   |   qualifiedAccess L_SQUARE_BRACKET expression R_SQUARE_BRACKET (DOT qualifiedAccess)?
-   |   simpleCall DOT qualifiedAccess
-   |   simpleCall DOT procUsage
-   ;
-
-simpleCall
-   :   Identifier generic? L_BRACKET qualifiedAccess R_BRACKET
-   ;
-
-identifierList
-   :   Identifier (COMMA Identifier)*
-   ;
-
-arrayLiteral
-   :   L_SQUARE_BRACKET expressionsList? R_SQUARE_BRACKET
-   ;
-
-periodSeparatedFullName
-   :   Identifier
-   |   Identifier (DOT Identifier)*
-   |   BACK_QOUTE Identifier (DOT Identifier)* BACK_QOUTE
-   |   UNBOUNDED
-   ;
-
-integerNumber
-   :   (MINUS | PLUS)? IntegerLiteral
-   ;
-
-floatNumber
-   :   (MINUS | PLUS)? FloatingPointLiteral
-   ;
-
-suffix
-   :   Identifier
-   ;
+whereClause
+    :   WHERE constraints+=typeConstraint
+        (COMMA constraints+=typeConstraint)*
+        COMMA?
+    ;
 
 typeConstraint
-    : paramName=Identifier COLON paramConstraint=typeArgument
+    :   param=ident
+        COLON
+        bound=typeExpr
     ;
 
-whereConstraints
-    : WHERE typeConstraint (COMMA typeConstraint)*
+generics
+    :   L_ANGLE (list=genericList COMMA?)? R_ANGLE
     ;
 
-genericBound
-   :   bound=(IN | OUT)
-   ;
+genericList
+    :   params+=generic
+        (COMMA params+=generic)*
+    ;
 
-typeIdentifierName
-   :   periodSeparatedFullName
-   |   primitiveLiteral
-   ;
+generic
+    :   variance=varianceSpec?
+        name=ident
+    ;
+
+varianceSpec
+    :   OUT # Covariant
+    |   IN # Contravariant
+    |   IN OUT # Invariant
+    ;
+
+typeExprList
+    :   typeExprs+=typeExpr
+        (COMMA typeExprs+=typeExpr)*
+    ;
+
+atomicTypeExpr
+    :   L_PAREN inner=typeExpr R_PAREN # TypeExprParen
+    |   lit=primitiveLit # TypeExprPrimitiveLit
+    |   nameTypeExpr # TypeExprName
+    |   pointerTypeExpr # TypeExprPointer
+    ;
+
+typeExpr
+    :   atomicTypeExpr # TypeExprAtomic
+    |   lhs=typeExpr AMP rhs=typeExpr # TypeExprIntersection
+    |   lhs=typeExpr PIPE rhs=typeExpr # TypeExprUnion
+    ;
+
+nameTypeExpr
+    :   typeName=fullName
+        typeArgs=typeArgSpec?
+    ;
+
+pointerTypeExpr
+    :   ASTERISK
+        base=atomicTypeExpr
+    ;
+
+typeArgSpec
+    :   L_ANGLE (list=typeArgList COMMA?)? R_ANGLE
+    ;
+
+typeArgList
+    :   typeArgs+=typeArg
+        (COMMA typeArgs+=typeArg)*
+    ;
+
+typeArg
+    :   variance=varianceSpec? typeExpr # TypeArgTypeExpr
+    |   QUESTION # TypeArgWildcard
+    ;
+
+block
+    :   stmt # BlockLoneStmt
+    |   L_BRACE stmts+=stmt* R_BRACE # BlockBraced
+    ;
+
+stmt
+    :   variableDecl # StmtVariableDecl
+    |   ifStmt # StmtIf
+    |   assignStmt # StmtAssign
+    |   cancelStmt # StmtCancel
+    |   inner=expr SEMICOLON # StmtExpr
+    ;
+
+ifStmt
+    :   IF
+        L_PAREN condition=expr R_PAREN
+        thenBranch=block
+        (ELSE elseBranch=block)?
+    ;
+
+assignStmt
+    :   lhs=assignee
+        op=assignOp
+        rhs=expr
+        SEMICOLON
+    ;
+
+assignee
+    :   name=ident # AssigneeName
+    |   base=expr DOT field=ident # AssigneeField
+    |   base=expr L_BRACKET index=expr R_BRACKET # AssigneeIndex
+    ;
+
+cancelStmt
+    :   CANCEL SEMICOLON
+    ;
+
+assignOp
+    :   EQ # OpAssign
+    |   PLUS_EQ # OpAddAssign
+    |   MINUS_EQ # OpSubAssign
+    |   ASTERISK_EQ # OpMulAssign
+    |   SLASH_EQ # OpDivAssign
+    |   PERCENT_EQ # OpModAssign
+    |   AMP_EQ # OpBitAndAssign
+    |   PIPE_EQ # OpBitOrAssign
+    |   CARET_EQ # OpBitXorAssign
+    |   L_ANGLE_L_ANGLE_EQ # OpLShiftAssign
+    |   R_ANGLE_R_ANGLE_EQ # OpRShiftAssign
+    ;
+
+exprList
+    :   exprs+=expr
+        (COMMA exprs+=expr)*
+    ;
+
+atomicExpr
+    :   L_PAREN inner=atomicExpr R_PAREN # AtomicExprParen
+    |   lit=primitiveLit # AtomicExprPrimitiveLit
+    |   signedNumLit # AtomicExprSignedNumLit
+    |   arrayLitExpr # AtomicExprArrayLit
+    |   setLitExpr # AtomicExprSetLit
+    |   name=ident # AtomicExprName
+    ;
+
+signedNumLit
+    :   sign lit=IntegerLit # SignedNumLitInt
+    |   sign lit=FloatLit # SignedNumLitFloat
+    ;
+
+expr
+    :   L_PAREN inner=expr R_PAREN # ExprParen
+    |   lit=primitiveLit # ExprPrimitiveLit
+    |   arrayLitExpr # ExprArrayLit
+    |   setLitExpr # ExprSetLit
+    |   name=ident typeArgs=typeArgSpec? L_PAREN (args=exprList COMMA?)? R_PAREN # ExprProcCallUnqualified
+    |   actionCallExpr # ExprActionCall
+    |   instantiationExpr # ExprInstantiation
+    |   name=ident # ExprName
+    |   base=expr QUOTE # ExprPrev
+    |   base=expr DOT name=ident typeArgs=typeArgSpec? L_PAREN (args=exprList COMMA?)? R_PAREN # ExprProcCallQualified
+    |   base=expr DOT field=ident # ExprField
+    |   base=expr DOT ASTERISK # ExprDeref
+    |   base=expr L_BRACKET index=expr R_BRACKET # ExprIndex
+    |   op=unOp rhs=expr # ExprUnary
+    |   lhs=expr not=BANG? HAS concept=ident # ExprHasConcept
+    |   lhs=expr not=BANG? IS type=typeExpr # ExprTypeComparison
+    |   lhs=expr AS type=typeExpr # ExprCast
+    |   lhs=expr op=mulBinOp rhs=expr # ExprMultiplicative
+    |   lhs=expr op=addBinOp rhs=expr # ExprAdditive
+    |   lhs=expr op=bitShiftOp rhs=expr # ExprShift
+    |   lhs=expr AMP rhs=expr # ExprBitAnd
+    |   lhs=expr CARET rhs=expr # ExprBitXor
+    |   lhs=expr PIPE rhs=expr # ExprBitOr
+    |   lhs=expr op=relOp rhs=expr # ExprRelational
+    |   lhs=expr AMP_AMP rhs=expr # ExprAnd
+    |   lhs=expr PIPE_PIPE rhs=expr # ExprOr
+    ;
+
+unOp
+    :   PLUS # UnOpPlus
+    |   MINUS # UnOpNeg
+    |   TILDE # UnOpBitNot
+    |   BANG # UnOpNot
+    ;
+
+mulBinOp
+    :   ASTERISK # BinOpMul
+    |   SLASH # BinOpDiv
+    |   PERCENT # BinOpMod
+    ;
+
+addBinOp
+    :   PLUS # BinOpAdd
+    |   MINUS # BinOpSub
+    ;
+
+// TODO: ensure contiguousness.
+bitShiftOp
+    :   L_ANGLE L_ANGLE L_ANGLE # BinOpLogicalLeft
+    |   R_ANGLE R_ANGLE R_ANGLE # BinOpLogicalRight
+    |   L_ANGLE L_ANGLE # BinOpArithmeticLeft
+    |   R_ANGLE R_ANGLE # BinOpArithmeticRight
+    ;
+
+relOp
+    :   L_ANGLE_EQ # BinOpLessEquals
+    |   R_ANGLE_EQ # BinOpGreaterEquals
+    |   L_ANGLE # BinOpLess
+    |   R_ANGLE # BinOpGreater
+    |   EQ_EQ # BinOpEquals
+    |   BANG_EQ # BinOpNotEquals
+    |   not=BANG? IN # BinOpIn
+    ;
+
+primitiveLit
+    :   IntegerLit # PrimitiveLitInt
+    |   FloatLit # PrimitiveLitFloat
+    |   StringLit # PrimitiveLitStringLit
+    |   CharacterLit # PrimitiveLitChar
+    |   TRUE # PrimitiveLitTrue
+    |   FALSE # PrimitiveLitFalse
+    |   NULL # PrimitiveLitNull
+    ;
+
+arrayLitExpr
+    :   L_BRACKET (elems=exprList COMMA?)? R_BRACKET
+    ;
+
+setLitExpr
+    :   L_BRACE (elems=exprList COMMA?)? R_BRACE
+    ;
+
+actionCallExpr
+    :   ACTION name=ident
+        typeArgs=typeArgSpec?
+        L_PAREN (args=exprList COMMA?)? R_PAREN
+    ;
+
+instantiationExpr
+    :   NEW name=fullName
+        typeArgs=typeArgSpec?
+        L_PAREN (args=constructorArgList COMMA?)? R_PAREN
+    ;
+
+constructorArgList
+    :   args+=constructorArg
+        (COMMA args+=constructorArg)*
+    ;
+
+constructorArg
+    :   STATE EQ state=ident # ConstructorArgState
+    |   name=ident EQ value=expr # ConstructorArgVar
+    ;
+
+ident
+    :   Identifier
+    |   STATIC
+    |   IMPLEMENTS
+    |   PURE
+    ;
