@@ -564,5 +564,5 @@ PathStringLit
     ;
 
 BarePath
-    :   [\p{Alnum}\p{General_Category=Other_Letter}!@$%^&*+=/_\\.-]+
+    :   [\p{L}\p{N}!@$%^&*+=/_\\.-]+
     ;
