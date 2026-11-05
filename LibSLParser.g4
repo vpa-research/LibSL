@@ -326,6 +326,7 @@ procDecl
 
 procModifier
     :   PURE # ProcModifierPure
+    |	STATIC # ProcModifierStatic
     ;
 
 functionParamList
