@@ -100,7 +100,7 @@ structDefDecl
 
 enumDecl
     :   annotations+=annotation*
-        ENUM typeName=qualifiedTypeName
+        ENUM typeName=fullName
         L_BRACE variants+=enumDeclVariant* R_BRACE
     ;
 
