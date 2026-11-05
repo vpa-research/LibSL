@@ -579,12 +579,12 @@ expr
     |   lit=primitiveLit # ExprPrimitiveLit
     |   arrayLitExpr # ExprArrayLit
     |   setLitExpr # ExprSetLit
-    |   name=ident typeArgs=typeArgSpec? L_PAREN (args=exprList COMMA?)? R_PAREN # ExprProcCallUnqualified
+    |   name=ident typeArgs=typeArgSpec? L_PAREN (args=exprList COMMA?)? R_PAREN # ExprCallUnqualified
     |   actionCallExpr # ExprActionCall
     |   instantiationExpr # ExprInstantiation
     |   name=ident # ExprName
     |   base=expr QUOTE # ExprPrev
-    |   base=expr DOT name=ident typeArgs=typeArgSpec? L_PAREN (args=exprList COMMA?)? R_PAREN # ExprProcCallQualified
+    |   base=expr DOT name=ident typeArgs=typeArgSpec? L_PAREN (args=exprList COMMA?)? R_PAREN # ExprCallQualified
     |   base=expr DOT field=ident # ExprField
     |   base=expr DOT ASTERISK # ExprDeref
     |   base=expr L_BRACKET index=expr R_BRACKET # ExprIndex
