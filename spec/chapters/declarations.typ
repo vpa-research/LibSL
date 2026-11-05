@@ -1225,6 +1225,7 @@
   
   procModifier
       :   PURE # ProcModifierPure
+      |   STATIC # ProcModifierStatic
       ;
   ```,
 )
@@ -1275,7 +1276,8 @@
     [
       `proc-modifier`
       <
-        "pure"
+        "pure",
+        "static"
       >
     ]
     ```,
@@ -1296,8 +1298,19 @@
 #rule(<decl.fn.proc.global>)
 @def:global-fn-entity[Глобальная] процедура добавляется в @def:file-scope[область видимости текущего файла].
 
+#rule(<decl.fn.proc.global.static>)
+#sema-err-def[Использование модификатора `static` в объявлении глобальной процедуры][Наличие модификатора `static` в объявлении @def:global-fn-entity[глобальной] процедуры — семантическая ошибка.]
+
+#impl-spec(impls.rs)[
+  Проверка отсутствует.
+]
+
 #rule(<decl.fn.proc.method>)
-Процедура-@def:method[метод] добавляется в @def:instance-scope[область видимости элементов экземпляра].
+Процедура-@def:method[метод], объявленная без модификатора `static`, добавляется в @def:instance-scope[область видимости элементов экземпляра].
+
+#rule(<decl.fn.proc.method.static>)
+Процедура@def:method[метод], объявленная с модификатором `static`, добавляется в @def:member-scope[область видимости ассоциированных сущностей].
+Такой метод является @def:static-method[статическим].
 
 #rule(<decl.fn.proc.method-spec>)
 #TODO[прояснить природу `.*`, как в функциях]
