@@ -364,6 +364,14 @@ CANCEL
     :   'cancel'
     ;
 
+ANY
+    :   'any'
+    ;
+
+SELF
+    :   'self'
+    ;
+
 IntegerLit
     :   DecimalIntegerLit
     |   HexIntegerLit

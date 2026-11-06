@@ -1,16 +1,16 @@
 #import "meta.typ": *
 #import "style.typ": style
 
-#[
-  #show: style.with(kind: "title")
+#{
+  show: style.with(kind: "title")
 
-  #title[Спецификация LibSL 2]
+  title[Спецификация LibSL 2]
 
-  #include "intro.typ"
+  include "intro.typ"
 
-  #pagebreak(weak: true)
-  #outline()
-]
+  pagebreak(weak: true)
+  outline()
+}
 
 #{
   show: style.with(kind: "main")

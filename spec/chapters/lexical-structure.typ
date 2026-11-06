@@ -93,7 +93,7 @@
   ```antlr
   ident
       :   Identifier
-      |   soft-keyword
+      |   weak-keyword
       ;
   ```,
 )
@@ -195,6 +195,8 @@
     `static`,
     `implements`,
     `pure`,
+    `any`,
+    `self`,
   ).map(kw => (kw, [Нет])).flatten(),
 )
 

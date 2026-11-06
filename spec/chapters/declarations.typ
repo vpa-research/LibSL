@@ -152,14 +152,14 @@
       :   TYPES
           L_BRACE decls+=semanticTypeDecl* R_BRACE
       ;
-  
+
   semanticTypeDecl
       :   annotations+=annotation*
           typeName=qualifiedTypeName
           L_PAREN realType=typeExpr R_PAREN
           semanticTypeDef
       ;
-  
+
   semanticTypeDef
       :   SEMICOLON # SemanticTypeDefSimple
       |   L_BRACE values+=enumSemanticTypeValue* R_BRACE # SemanticTypeDefEnum
@@ -418,16 +418,16 @@
           ENUM typeName=fullName
           L_BRACE variants+=enumDeclVariant* R_BRACE
       ;
-  
+
   enumDeclVariant
       :   name=ident EQ value=signedIntLit SEMICOLON
       ;
-  
+
   signedIntLit
       :   sign?
           lit=IntegerLit
       ;
-  
+
   sign
       :   MINUS # MinusSign
       |   PLUS # PlusSign
@@ -560,12 +560,12 @@
           L_PAREN (params=annotationParamList COMMA?)? R_PAREN
           SEMICOLON
       ;
-  
+
   annotationParamList
       :   params+=annotationParam
           (COMMA params+=annotationParam)*
       ;
-  
+
   annotationParam
       :   name=ident
           COLON type=typeExpr
@@ -645,12 +645,12 @@
           typeConstrants=whereClause?
           SEMICOLON
       ;
-  
+
   actionParamList
       :   params+=actionParam
           (COMMA params+=actionParam)*
       ;
-  
+
   actionParam
       :   annotations+=annotation*
           name=ident
@@ -684,7 +684,7 @@
         [
           'where-clause'?
         ]
-      } 
+      }
       ";"
     ]
     ```,
@@ -700,7 +700,7 @@
       'ident'
       ":"
       'type-expr'
-      
+
     ]
     ```,
   )
@@ -735,18 +735,18 @@
   automatonDecl
       :   annotations+=annotation*
           AUTOMATON concept=CONCEPT? name=qualifiedTypeName
-          (L_PAREN (constructorVariables=constructorVariableList COMMA?)? R_PAREN)?         
+          (L_PAREN (constructorVariables=constructorVariableList COMMA?)? R_PAREN)?
           COLON type=typeExpr
           (implements=implementedConcepts COMMA?)*
           typeConstraints=whereClause?
           L_BRACE decls+=automatonDefDecl* R_BRACE
       ;
-  
+
   constructorVariableList
       :   variables+=constructorVariable
           (COMMA variables+=constructorVariable)*
       ;
-  
+
   implementedConcepts
       :   IMPLEMENTS concepts+=ident
           (COMMA concepts+=ident)*
@@ -893,7 +893,7 @@
   А `x + x`?
 
   Есть подозрение, что наиболее прямолинейно автоматы считать новым типом.
-  
+
 ]
 
 #rule-h(<decl.automaton.concept>)
@@ -1222,7 +1222,7 @@
           typeConstraints=whereClause?
           def=functionDef
       ;
-  
+
   procModifier
       :   PURE # ProcModifierPure
       |   STATIC # ProcModifierStatic
@@ -1449,7 +1449,7 @@
           (EQ init=expr)?
           SEMICOLON
       ;
-  
+
   variableKind
       :   VAR # VariableKindVar
       |   VAL # VariableKindVal
@@ -1590,19 +1590,19 @@
   ```antlr
   stateDecl
       :   kind=stateKind
-          names=identList
+          names=stateNameList
           SEMICOLON
       ;
-  
+
   stateKind
       :   INITSTATE # StateKindInitial
       |   STATE # StateKindRegular
       |   FINISHSTATE # StateKindFinal
       ;
 
-  identList
-      :   names+=ident
-          (COMMA names+=ident)*
+  stateNameList
+      :   names+=stateName
+          (COMMA names+=stateName)*
       ;
   ```,
 )
@@ -1617,7 +1617,7 @@
         "state",
         "finishstate"
       >
-      'ident'*","
+      'state-name'*","
       ";"
     ]
     ```,
@@ -1632,11 +1632,7 @@
 - `any`
 - `self`
 
-#sema-err-def[Объявление состояния с зарезервированным именем][Объявление состояния с одним из таких имён — семантическая ошибка.]
-
-#impl-spec(impls.rs)[
-  Такая проверка отсутствует.
-]
+#syntax-err-def[Объявление состояния с зарезервированным именем][Объявление состояния с одним из таких имён — синтаксическая ошибка.]
 
 #rule(<decl.state.kinds>)
 #def("regular-state")[Обычное именованное состояние] объявляется при помощи ключевого слова `state`.
@@ -1655,21 +1651,27 @@
   shiftDecl
       :   SHIFT
           from=shiftSourceState
-          ARROW to=ident
+          ARROW to=shiftTargetState
           BY by=shiftBy
           SEMICOLON
       ;
-  
+
   shiftSourceState
-      :   ident # ShiftSourceStateShorthand
-      |   L_PAREN (states=identList COMMA?)? R_PAREN # ShiftSourceStateList
+      :   stateName # ShiftSourceStateShorthand
+      |   L_PAREN (states=stateNameList COMMA?)? R_PAREN # ShiftSourceStateList
+      |   ANY # ShiftSourceStateAny
       ;
-  
+
+  shiftTargetState
+      :   stateName # ShiftTargetStateNamed
+      |   SELF # ShiftTargetStateSelf
+      ;
+
   shiftBy
       :   signature=functionSignature # ShiftByShorthand
       |   L_BRACKET (signatures=functionSignatureList COMMA?)? R_BRACKET # ShiftByList
       ;
-  
+
   functionSignatureList
       :   signatures+=functionSignature
           (COMMA signatures+=functionSignature)*
@@ -1687,19 +1689,21 @@
       ],
       [
         <
-          'ident',
+          'state-name',
           [
             "("
             [
-              'ident'*","
+              'state-name'*","
               ","?
             ]?
             ")"
-          ]
+          ],
+          "any"
         >#`source states`
-        [
-          "->" 'ident'
-        ]#`target state`
+        <
+          ["->" 'state-name'],
+          "self"
+        >#`target state`
       ],
       [
         "by"
@@ -1732,16 +1736,14 @@
 Для таких исходных состояний и функций правило называется #def("applicable-shift-rule")[Применимое правило перехода][применимым].
 
 #rule(<decl.shift.source>)
-В качестве исходного состояния можно указать либо @def:automaton-state[именованные состояния] автомата, либо специальное имя `any`, которое распространяет правило на все состояния автомата, кроме @def:final-state[конечных].
-#TODO[сделать `any` слабым ключевым словом]
+В качестве исходного состояния можно указать либо @def:automaton-state[именованные состояния] автомата, либо @def:keyword-weak[слабое ключевое слово] `any`, которое распространяет правило на все состояния автомата, кроме @def:final-state[конечных].
 
 #rule(<decl.shift.source.final>)
 Исходное состояние не может быть @def:final-state[конечным].
 #sema-err-def[Использование конечного состояния как исходного в объявлении правила перехода][Указание конечного состояния как исходного — семантическая ошибка.]
 
 #rule(<decl.shift.target>)
-В качестве нового состояния можно указать либо @def:automaton-state[именованное состояние] автомата, либо специальное имя `self`, которое означает, что состояние автомата в результате применения правила не изменяется.
-#TODO[сделать `self` слабым ключевым словом]
+В качестве нового состояния можно указать либо @def:automaton-state[именованное состояние] автомата, либо @def:keyword-weak[слабое ключевое слово] `self`, которое означает, что состояние автомата в результате применения правила не изменяется.
 
 #rule(<decl.shift.unknown-state>)
 #sema-err-def[Использование необъявленного состояния в объявлении правила перехода][Указание в качестве исходного или нового состояния имени, не @def:state-decl[объявленного] состоянием объемлющего автомата, — семантическая ошибка.]

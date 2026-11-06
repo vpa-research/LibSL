@@ -248,7 +248,7 @@ variableKind
 
 stateDecl
     :   kind=stateKind
-        names=identList
+        names=stateNameList
         SEMICOLON
     ;
 
@@ -258,22 +258,28 @@ stateKind
     |   FINISHSTATE # StateKindFinal
     ;
 
-identList
-    :   names+=ident
-        (COMMA names+=ident)*
+stateNameList
+    :   names+=stateName
+        (COMMA names+=stateName)*
     ;
 
 shiftDecl
     :   SHIFT
         from=shiftSourceState
-        ARROW to=ident
+        ARROW to=shiftTargetState
         BY by=shiftBy
         SEMICOLON
     ;
 
 shiftSourceState
-    :   ident # ShiftSourceStateShorthand
-    |   L_PAREN (states=identList COMMA?)? R_PAREN # ShiftSourceStateList
+    :   stateName # ShiftSourceStateShorthand
+    |   L_PAREN (states=stateNameList COMMA?)? R_PAREN # ShiftSourceStateList
+    |   ANY # ShiftSourceStateAny
+    ;
+
+shiftTargetState
+    :   stateName # ShiftTargetStateNamed
+    |   SELF # ShiftTargetStateSelf
     ;
 
 shiftBy
@@ -681,6 +687,15 @@ constructorArg
     ;
 
 ident
+    :   Identifier
+    |   STATIC
+    |   IMPLEMENTS
+    |   PURE
+    |   ANY
+    |   SELF
+    ;
+
+stateName
     :   Identifier
     |   STATIC
     |   IMPLEMENTS
