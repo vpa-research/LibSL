@@ -101,17 +101,17 @@ LibSL является статически типизированным язы�
   generics
       :   L_ANGLE (list=genericList COMMA?)? R_ANGLE
       ;
-  
+
   genericList
       :   params+=generic
           (COMMA params+=generic)*
       ;
-  
+
   generic
       :   variance=varianceSpec?
           name=ident
       ;
-  
+
   varianceSpec
       :   OUT # Covariant
       |   IN # Contravariant
@@ -209,7 +209,7 @@ LibSL является статически типизированным язы�
           (COMMA constraints+=typeConstraint)*
           COMMA?
       ;
-  
+
   typeConstraint
       :   param=ident
           COLON
@@ -268,12 +268,12 @@ LibSL является статически типизированным язы�
   typeArgSpec
       :   L_ANGLE (list=typeArgList COMMA?)? R_ANGLE
       ;
-  
+
   typeArgList
       :   typeArgs+=typeArg
           (COMMA typeArgs+=typeArg)*
       ;
-  
+
   typeArg
       :   variance=varianceSpec? typeExpr # TypeArgTypeExpr
       |   QUESTION # TypeArgWildcard
@@ -527,7 +527,7 @@ $ "clone-type-param"(#type-expr($T$)) = #type-expr($T'$), $
 
 Также определены:
 
-$ 
+$
   &"union"(T_1, ..., T_n) &&= "union"("union"(T_1, ..., T_(n - 1)), T_n) "для" n > 2; \
   &"union"(T) &&= T; \
   &"union"() &&= #type-expr(builtin-types.nothing).
@@ -634,7 +634,7 @@ $
       |   nameTypeExpr # TypeExprName
       |   pointerTypeExpr # TypeExprPointer
       ;
-  
+
   typeExpr
       :   atomicTypeExpr # TypeExprAtomic
       |   lhs=typeExpr AMP rhs=typeExpr # TypeExprIntersection

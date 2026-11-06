@@ -21,7 +21,7 @@
   columns: (1fr, auto),
 
   table.header[*Выражение*][*Правило*],
-  
+
   [@def:name-expr], [@expr.name.place],
   [@def:field-expr], [@expr.field.place],
   [@def:index-expr], [@expr.index.place],
@@ -457,7 +457,7 @@
 - $A$ — аргументы, определяемые следующим образом:
 
   - Пусть $a_1, ..., a_n$ — аргументы выражения.
-    
+
     Если $f$ является @def:static-method[нестатическим] @def:method[методом], то $A = a_0, ..., a_n$, где $a_0$ — @def:object[объект]:
 
       - при неквалифицированном вызове — @def:current-exec-state[текущее] значение @def:this-var[переменной объекта];
@@ -535,12 +535,12 @@
           typeArgs=typeArgSpec?
           L_PAREN (args=constructorArgList COMMA?)? R_PAREN
       ;
-  
+
   constructorArgList
       :   args+=constructorArg
           (COMMA args+=constructorArg)*
       ;
-  
+
   constructorArg
       :   STATE EQ state=ident # ConstructorArgState
       |   name=ident EQ value=expr # ConstructorArgVar
@@ -1192,7 +1192,7 @@ LibSL содержит унарные и бинарные операторные
         [*Тип результата*],
       )
     ),
-  
+
     ..sigs.pos()
       .map(sig => {
         (
@@ -1204,7 +1204,7 @@ LibSL содержит унарные и бинарные операторные
           ..sig.params.map(align.with(center + horizon)),
           align(center + horizon, sig.ret),
         )
-    
+
         if sig.note != none {
           (table.cell(align: horizon, colspan: arity + 1, sig.note),)
         }
@@ -1474,7 +1474,7 @@ LibSL содержит унарные и бинарные операторные
           none
         }
       },
-  
+
       table.header[*Левый*][*Правый*][*`&`*][*`^`*][*`|`*],
 
       ..{

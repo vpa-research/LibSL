@@ -17,11 +17,11 @@
 
   Понимание символа в данной спецификации может отличаться от привычного.
   Пример:
-  
+
   #korean[훯]
 
   Этот корейский слог является одним символом с точки зрения корейского языка, однако его представление в Unicode в данном случае использует 3 @def:character[символа]:
-  
+
   #korean[ᄒ ᅯ ᆶ]
 
   (В Unicode также содержится представление того же слога как одного @def:character[символа]: 훯.)
@@ -257,23 +257,23 @@
       |   OctalIntegerLit
       |   BinaryIntegerLit
       ;
-  
+
   fragment DecimalIntegerLit
       :   DecimalNumeral IntegerTypeSuffix?
       ;
-  
+
   fragment HexIntegerLit
       :   HexNumeral IntegerTypeSuffix?
       ;
-  
+
   fragment OctalIntegerLit
       :   OctalNumeral IntegerTypeSuffix?
       ;
-  
+
   fragment BinaryIntegerLit
       :   BinaryNumeral IntegerTypeSuffix?
       ;
-  
+
   fragment IntegerTypeSuffix
       :   [lLxsu]
       |   'ux'
@@ -344,7 +344,7 @@
   FloatLit
       :   DecimalFloatLit
       ;
-  
+
   fragment DecimalFloatLit
       :   Digits '.' Digits? ExponentPart? FloatTypeSuffix?
       |   Digits ExponentPart FloatTypeSuffix?
@@ -474,7 +474,7 @@
   fragment COMMENT
       :   '/*' .*? '*/'
       ;
-  
+
   fragment LINE_COMMENT
       :   '//' ~[\r\n]*
       ;
@@ -517,19 +517,19 @@
 #figure(
   ```antlr
   mode Path;
-  
+
   PathIgnored
       :   IGNORED -> channel(HIDDEN)
       ;
-  
+
   PathSemi
       :   ';' -> type(SEMICOLON), popMode
       ;
-  
+
   PathStringLit
       :   StringLit -> type(StringLit)
       ;
-  
+
   BarePath
       :   [\p{L}\p{N}!@$%^&*+=/_\\.-]+
       ;
@@ -556,7 +556,7 @@
       align: (center, left),
 
       table.header[*Символ*][*Комментарий*],
-      
+
       ..{
         let chars = (
           "!",

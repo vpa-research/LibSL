@@ -25,7 +25,7 @@
     let body = if it.supplement == auto {
       context {
         let def = recorded-defs.final().at(tag, default: none)
-  
+
         if def != none {
           def.desc
         }
@@ -164,7 +164,7 @@
             let nr = numbering(it.numbering, ..counter(heading).get()) + [.]
             let width = measure(nr).width
             pad-left += width + 0.5cm
-            
+
             nr
             h(0.5cm)
           }
@@ -217,7 +217,7 @@
         } else {
           "A.1"
         }
-  
+
         std.numbering(numbering, ..numbers)
       }
     } else {

@@ -70,7 +70,7 @@
           spec=contractPredicate
       ;
   ```,
-  
+
 )
 
 #figure(
@@ -264,9 +264,9 @@
 
 #note[
   Правила выполненности описываются текстом, а также в виде правил вывода в генценовской нотации, например:
-  
+
   #context query(<eq:p-block>).first()
-  
+
   Над чертой указываются условия, при выполнении которых справедливо следствие.
   Знак #sym.tack понимается как выполненность предиката.
   Предикаты обозначаются греческими буквами.
@@ -340,7 +340,7 @@
 $
   #curryst.prooftree({
     import curryst: *
-  
+
     rule(
       name: [P-Block],
       $tack φ_1$,
@@ -505,7 +505,7 @@ $
   $
     &#curryst.prooftree({
       import curryst: *
-  
+
       rule(
         name: [P-If-Then-True],
         $tack e$,
@@ -517,7 +517,7 @@ $
     #h(2em)
     &#curryst.prooftree({
       import curryst: *
-  
+
       rule(
         name: [P-If-Then-False],
         $tack.not e$,
@@ -527,7 +527,7 @@ $
 
     &#curryst.prooftree({
       import curryst: *
-  
+
       rule(
         name: [P-If-ThenElse-True],
         $tack e$,
@@ -539,7 +539,7 @@ $
     #h(2em)
     &#curryst.prooftree({
       import curryst: *
-  
+
       rule(
         name: [P-If-ThenElse-False],
         $tack.not e$,

@@ -236,7 +236,7 @@ functionDef
     }
     ```,
   ),
-  
+
   railroad(
     ```
     [
@@ -247,7 +247,7 @@ functionDef
     ]
     ```,
   ),
-  
+
   railroad(
     ```
     [
