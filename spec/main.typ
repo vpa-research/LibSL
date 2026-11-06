@@ -1,10 +1,16 @@
 #import "meta.typ": *
 #import "style.typ": style
 
+#set document(
+  title: [Спецификация LibSL 2],
+  description: [Нормативная спецификация языка LibSL 2],
+  date: none,
+)
+
 #{
   show: style.with(kind: "title")
 
-  title[Спецификация LibSL 2]
+  title()
 
   include "intro.typ"
 
