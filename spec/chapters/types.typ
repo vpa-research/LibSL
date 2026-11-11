@@ -543,6 +543,44 @@ $
   $ #type-expr(ctor(builtin-types.array)(ctor(builtin-types.set)($T$)))\[#type-expr($T$) mapsto #type-expr(builtin-types.int32)\] = #type-expr(ctor(builtin-types.array)(ctor(builtin-types.set)(builtin-types.int32))) $
 ]
 
+#rule-h(<type.op.param-inst>)
+=== Инстанцирование типовых параметров
+
+#def("type-param-instantiation")[Инстанцирование типовых параметров] $"instantiate"$ — операция на @def:extended-type[расширенных типах], которая порождает новые @def:infer-var[типовые переменные], соответствующие указанным @def:type-param[типовым параметрам]:
+
+$
+  "instantiate"(T_1, ..., T_n) = α_1, ..., α_n,
+$
+
+где:
+
+- $T_1, ..., T_n$ — типовые параметры некоторой @def:parametrized-entity[параметризованной сущности];
+- $α_1, ..., α_n$ — новые и попарно различные типовые переменные.
+
+#rule-h(<type.op.object-type>)
+=== Получение типа объекта
+
+#def("object-type")[Операция получения типа объекта] $"object-type"$ — операция на @def:extended-type[расширенных типах], которая предоставляет тип, вводимый @def:object-entity[объектной сущностью].
+Если объектной сущности $E$ соответствует @def:constructed-type[конструируемый тип] #type-expr(ctor($T$)($P_1$, $...$, $P_n$)), то:
+
+$
+  "object-type"(E, "Param") = #type-expr(ctor($T$)($P_1$, $...$, $P_n$)), \
+  "object-type"(E, "Var") = #type-expr(ctor($T$)($α_1$, $...$, $α_n$)),
+$
+
+где $α_1, ..., α_n = "instantiate"(P_1, ..., P_n)$.
+
+Если сущность $E$ не является объектной, то операция $"object-type"(E, t)$ не определено.
+
+Также вводятся $"object-type"(e, "Param")$ и $"object-type"(e, "Var")$, где $e$ — @def:expr[выражение].
+Если @def:current-scope[текущая область видимости] выражения $e$ @def:scope-containment[содержится] в области видимости, в которой определена @def:this-var[переменная объекта], соответствующая сущности $E$, то
+
+$
+  "object-type"(e, t) = "object-type"(E, t).
+$
+
+В противном случае $"object-type"(e, t)$ не определено.
+
 #rule-h(<type.op.eq>)
 === Равенство
 
