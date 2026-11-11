@@ -32,6 +32,7 @@
   include "chapters/types.typ"
   include "chapters/well-formedness.typ"
   include "chapters/runtime.typ"
+  include "chapters/std.typ"
 }
 
 #{

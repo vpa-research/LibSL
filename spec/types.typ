@@ -125,3 +125,21 @@
 }
 
 #let type-expr(t) = raw-box(render-type-expr(arg-to-type(t), 0))
+
+#let fn-sig(recv: none, name, target: none) = (..args) => ret => {
+  let recv = if recv != none {
+    $#render-type-expr(arg-to-type(recv), 0).$
+  } else {
+    none
+  }
+
+  let name = if target == none {
+    skip-raw-box(raw(name))
+  } else {
+    link-underline(link(target, skip-raw-box(raw(name))))
+  }
+
+  let args = args.named().pairs().map(((name, ty)) => $#name: #render-type-expr(arg-to-type(ty), 0)$)
+
+  raw-box($#recv#name;(#args.join($," " $)) -> #render-type-expr(arg-to-type(ret), 0)$)
+}
