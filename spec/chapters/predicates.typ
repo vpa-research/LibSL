@@ -208,12 +208,14 @@
       |   name=ident COLON predicate # PredicateNamed
       |   variableDecl # PredicateVariableDecl
       |   ifPredicate # PredicateIf
+      |   cancelPredicate # PredicateCancel
       |   expr SEMICOLON # PredicateExpr
       ;
 
   contractPredicate
       :   blockPredicate # ContractPredicateBlock
       |   ifPredicate # ContractPredicateIf
+      |   cancelPredicate # ContractPredicateCancel
       |   expr SEMICOLON # ContractPredicateExpr
       ;
   ```,
@@ -229,6 +231,7 @@
         'named-predicate',
         'variable-decl-predicate',
         'if-predicate',
+        'cancel-predicate',
         'expr-predicate'
       >
     ]
@@ -244,6 +247,7 @@
       <
         'block-predicate',
         'if-predicate',
+        'cancel-predicate',
         'expr-predicate'
       >
     ]
@@ -299,11 +303,12 @@
 
 #rule(<contract.pred.kinds>)
 В языке имеются следующие виды предикатов:
-+ @def:block-pred.
-+ @def:named-pred.
-+ @def:variable-decl-pred.
-+ @def:if-pred.
-+ @def:expr-pred.
+#let preds = state("preds", ())
+#let pred-def(name, ..args) = {
+  def(name, ..args)
+  preds.update(preds => preds + (ref(label("def:" + name)),))
+}
+#context enum(tight: true, ..preds.final().map(it => [#it.]))
 
 #rule-h(<contract.pred.block>)
 === Блоковый предикат
@@ -332,7 +337,7 @@
 )
 
 #rule(<contract.pred.block.intro>)
-#def("block-pred")[Блоковый предикат] — предикат, выражающий конъюнкцию предикатов, расположенных между фигурными скобками.
+#pred-def("block-pred")[Блоковый предикат] — предикат, выражающий конъюнкцию предикатов, расположенных между фигурными скобками.
 
 #rule(<contract.pred.block.eval>)
 При @def:pred-eval[вычислении] предиката он считается выполненным, если выполнены все перечисленные предикаты:
@@ -387,7 +392,7 @@ $ <eq:p-block>
 )
 
 #rule(<contract.pred.named.intro>)
-#def("named-pred")[Именованный предикат] объявляет новое имя в @def:namespace[пространстве имён] контрактов @def:scope[области видимости] тела @def:fn-body[функциональной сущности] или @def:pred-body[функционального предиката].
+#pred-def("named-pred")[Именованный предикат] объявляет новое имя в @def:namespace[пространстве имён] контрактов @def:scope[области видимости] тела @def:fn-body[функциональной сущности] или @def:pred-body[функционального предиката].
 
 #note[
   В отличие от большинства других конструкций языка, имя может вводиться не в @def:current-scope[текущую область видимости].
@@ -435,7 +440,7 @@ $
 )
 
 #rule(<contract.pred.variable-decl.intro>)
-#def("variable-decl-pred")[Предикат объявления локальной переменной] вводит новую @def:scope[область видимости] (@decl.variable.scope), в @def:namespace[пространстве имён] переменных которой объявляет @def:local-variable[локальную переменную].
+#pred-def("variable-decl-pred")[Предикат объявления локальной переменной] вводит новую @def:scope[область видимости] (@decl.variable.scope), в @def:namespace[пространстве имён] переменных которой объявляет @def:local-variable[локальную переменную].
 
 #rule(<contract.pred.variable-decl.eval>)
 При @def:pred-eval[вычислении] предиката он считается выполненным:
@@ -488,7 +493,7 @@ $
 )
 
 #rule(<contract.pred.if.intro>)
-#def("if-pred")[Условный предикат] — предикат-импликация.
+#pred-def("if-pred")[Условный предикат] — предикат-импликация.
 Посылка импликации указывается в скобках.
 После скобок указывается предикат-следствие.
 
@@ -578,10 +583,50 @@ $
 )
 
 #rule(<contract.pred.expr.intro>)
-#def("expr-pred")[Предикат-выражение] — предикат, условие которого представляет собой @def:expr[выражение].
+#pred-def("expr-pred")[Предикат-выражение] — предикат, условие которого представляет собой @def:expr[выражение].
 
 #rule(<contract.pred.expr.eval>)
 При @def:pred-eval[вычислении] предиката он считается выполненным, если результат @def:expr-eval[вычисления] выражения — `true`.
 
 #rule(<contract.pred.expr.typing>)
 Выражение должно @def:expr-conformity[соответствовать] типу #type-expr(builtin-types.bool).
+
+#rule-h(<contract.pred.cancel>)
+=== Предикат отмены перехода
+
+#figure(
+  ```antlr
+  cancelPredicate
+      :   CANCEL
+          SEMICOLON
+      ;
+  ```
+)
+
+#figure(
+  railroad(
+    ```
+    [
+      `cancel-predicate`
+      "cancel"
+      ";"
+    ]
+    ```,
+  ),
+)
+
+#rule(<contract.pred.cancel.intro>)
+#pred-def("cancel-pred")[Предикат отмены перехода] — предикат, который отменяет переход между состояниями при @def:function-execution[исполнении функции].
+
+#impl-spec(impls.rs)[
+  Предикат не реализован.
+]
+
+#rule(<contract.pred.cancel.sites>)
+Предикат отмены перехода может располагаться только в контракте @def:function-decl[функции]-@def:method[метода] @def:automaton-decl[автомата].
+#sema-err-def[Использование предиката отмены перехода вне контракта функции-метода автомата][Использование его в иных местах — семантическая ошибка.]
+
+#rule(<contract.pred.cancel.eval>)
+При @def:pred-eval[вычислении] предиката он считается выполненным.
+Он также отменяет переход между состояниями автомата согласно @def:applicable-shift-rule[применимому] правилу перехода (@decl.automaton.state.transition).
+В результате по завершении исполнения функции @def:automaton-state[именованное состояние] автомата останется прежним.

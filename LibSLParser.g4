@@ -380,6 +380,7 @@ assignsContract
 contractPredicate
     :   blockPredicate # ContractPredicateBlock
     |   ifPredicate # ContractPredicateIf
+    |   cancelPredicate # ContractPredicateCancel
     |   expr SEMICOLON # ContractPredicateExpr
     ;
 
@@ -398,6 +399,7 @@ predicate
     |   name=ident COLON predicate # PredicateNamed
     |   variableDecl # PredicateVariableDecl
     |   ifPredicate # PredicateIf
+    |   cancelPredicate # PredicateCancel
     |   expr SEMICOLON # PredicateExpr
     ;
 
@@ -410,6 +412,11 @@ ifPredicate
         L_PAREN condition=expr R_PAREN
         thenBranch=predicate
         (ELSE elseBranch=predicate)?
+    ;
+
+cancelPredicate
+    :   CANCEL
+        SEMICOLON
     ;
 
 annotation
