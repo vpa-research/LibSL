@@ -381,6 +381,8 @@ contractPredicate
     :   blockPredicate # ContractPredicateBlock
     |   ifPredicate # ContractPredicateIf
     |   cancelPredicate # ContractPredicateCancel
+    |   forPredicate # ContractPredicateFor
+    |   existsPredicate # ContractPredicateExists
     |   expr SEMICOLON # ContractPredicateExpr
     ;
 
@@ -400,6 +402,8 @@ predicate
     |   variableDecl # PredicateVariableDecl
     |   ifPredicate # PredicateIf
     |   cancelPredicate # PredicateCancel
+    |   forPredicate # PredicateFor
+    |   existsPredicate # PredicateExists
     |   expr SEMICOLON # PredicateExpr
     ;
 
@@ -417,6 +421,24 @@ ifPredicate
 cancelPredicate
     :   CANCEL
         SEMICOLON
+    ;
+
+forPredicate
+    :   FOR
+        L_PAREN
+        name=ident
+        IN domain=expr
+        R_PAREN
+        body=predicate
+    ;
+
+existsPredicate
+    :   EXISTS
+        L_PAREN
+        name=ident
+        IN domain=expr
+        R_PAREN
+        body=predicate
     ;
 
 annotation

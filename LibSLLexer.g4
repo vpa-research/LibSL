@@ -340,6 +340,10 @@ FOR
     :   'for'
     ;
 
+EXISTS
+    :   'exists'
+    ;
+
 IMPLEMENTS
     :   'implements'
     ;

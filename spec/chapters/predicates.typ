@@ -2,7 +2,7 @@
 
 #import "../meta.typ": *
 #import "../railroad.typ": railroad
-#import "../types.typ": type-expr, builtin-types
+#import "../types.typ": type-expr, builtin-types, ctor
 
 #rule-h(<contract>)
 = Контракты и предикаты
@@ -209,6 +209,8 @@
       |   variableDecl # PredicateVariableDecl
       |   ifPredicate # PredicateIf
       |   cancelPredicate # PredicateCancel
+      |   forPredicate # PredicateFor
+      |   existsPredicate # PredicateExists
       |   expr SEMICOLON # PredicateExpr
       ;
 
@@ -216,6 +218,8 @@
       :   blockPredicate # ContractPredicateBlock
       |   ifPredicate # ContractPredicateIf
       |   cancelPredicate # ContractPredicateCancel
+      |   forPredicate # ContractPredicateFor
+      |   existsPredicate # ContractPredicateExists
       |   expr SEMICOLON # ContractPredicateExpr
       ;
   ```,
@@ -232,6 +236,8 @@
         'variable-decl-predicate',
         'if-predicate',
         'cancel-predicate',
+        'for-predicate',
+        'exists-predicate',
         'expr-predicate'
       >
     ]
@@ -248,6 +254,8 @@
         'block-predicate',
         'if-predicate',
         'cancel-predicate',
+        'for-predicate',
+        'exists-predicate',
         'expr-predicate'
       >
     ]
@@ -630,3 +638,133 @@ $
 При @def:pred-eval[вычислении] предиката он считается выполненным.
 Он также отменяет переход между состояниями автомата согласно @def:applicable-shift-rule[применимому] правилу перехода (@decl.automaton.state.transition).
 В результате по завершении исполнения функции @def:automaton-state[именованное состояние] автомата останется прежним.
+
+#rule-h(<contract.pred.for>)
+=== Предикат-квантор всеобщности
+
+#figure(
+  ```antlr
+  forPredicate
+      :   FOR
+          L_PAREN
+          name=ident
+          IN domain=expr
+          R_PAREN
+          body=predicate
+      ;
+  ```,
+)
+
+#figure(
+  railroad(
+    ```
+    [
+      `for-predicate`
+      "for"
+      "("
+      'ident'
+      "in"
+      'expr'
+      ")"
+      'predicate'
+    ]
+    ```,
+  ),
+)
+
+#rule(<contract.pred.for.intro>)
+#pred-def("for-pred")[Предикат-квантор всеобщности] — предикат, который выполняется при выполнении вложенного предиката для любых значений переменной.
+Аналогичен квантору всеобщности.
+
+Имя переменной указывается перед `in`.
+После него записывается выражение, определяющее пространство значений переменной.
+
+Переменная является локальной.
+
+#impl-spec(impls.rs)[
+  Предикат не реализован.
+]
+
+#rule(<contract.pred.for.eval>)
+При @def:pred-eval[вычислении] предиката он считается выполненным, если вложенный предикат выполняется при всех значениях переменной из заданного пространства значений.
+
+#rule(<contract.pred.for.typing>)
+Тип выражения должен @def:expr-conformity[соответствовать] #type-expr(ctor(builtin-types.array)($T$)) или #type-expr(ctor(builtin-types.set)($T$)).
+Вводимая переменная имеет тип $T$.
+
+#rule(<contract.pred.for.scoping>)
+Предикат вводит следующие области видимости в @def:current-scope[текущей]:
+- @def:block-scope для переменной квантора
+  - @def:block-scope для тела
+
+В @def:namespace[пространстве имён] переменных области видимости для переменной квантора определяется @def:local-variable[локальная переменная] с указанным именем.
+
+#rule(<contract.pred.for.scoping.current>)
+@def:current-scope[Текущей областью видимости] является:
+- для выражения пространства значений — текущая область видимости предиката;
+- для вложенного предиката — введённая область видимости тела.
+
+#rule-h(<contract.pred.exists>)
+=== Предикат-квантор существования
+
+#figure(
+  ```antlr
+  existsPredicate
+      :   EXISTS
+          L_PAREN
+          name=ident
+          IN domain=expr
+          R_PAREN
+          body=predicate
+      ;
+  ```
+)
+
+#figure(
+  railroad(
+    ```
+    [
+      `exists-predicate`
+      "exists"
+      "("
+      'ident'
+      "in"
+      'expr'
+      ")"
+      'predicate'
+    ]
+    ```,
+  ),
+)
+
+#rule(<contract.pred.exists.intro>)
+#pred-def("exists-pred")[Предикат-квантор существования] — предикат, который выполняется при выполнении вложенного предиката хотя бы для одного значения переменной.
+Аналогичен квантору существования.
+
+Имя переменной указывается перед `in`.
+После него записывается выражение, определяющее пространство значений переменной.
+
+Переменная является локальной.
+
+#impl-spec(impls.rs)[
+  Предикат не реализован.
+]
+
+#rule(<contract.pred.exists.eval>)
+При @def:pred-eval[вычислении] предиката он считается выполненным, если вложенный предикат выполняется при некотором значении переменной из заданного пространства значений.
+
+#rule(<contract.pred.exists.typing>)
+Тип выражения должен @def:expr-conformity[соответствовать] #type-expr(ctor(builtin-types.array)($T$)) или #type-expr(ctor(builtin-types.set)($T$)).
+Вводимая переменная имеет тип $T$.
+
+#rule(<contract.pred.exists.scoping>)
+Предикат вводит следующие области видимости в @def:current-scope[текущей]:
+- @def:block-scope для переменной квантора
+  - @def:block-scope для тела
+
+В @def:namespace[пространстве имён] переменных области видимости для переменной квантора определяется @def:local-variable[локальная переменная] с указанным именем.
+
+#rule(<contract.pred.exists.scoping.current>)
+@def:current-scope[Текущей областью видимости] является:
+- для выражения пространства значений — текущая область видимости предиката;
+- для вложенного предиката — введённая область видимости тела.
