@@ -1,6 +1,6 @@
 #import "../meta.typ": *
 #import "../railroad.typ": railroad
-#import "../types.typ": type-expr, builtin-types
+#import "../types.typ": type-expr, builtin-types, ctor
 
 #rule-h(<stmt>)
 = Команды
@@ -48,6 +48,7 @@
       |   ifStmt # StmtIf
       |   assignStmt # StmtAssign
       |   cancelStmt # StmtCancel
+      |   forStmt # StmtFor
       |   inner=expr SEMICOLON # StmtExpr
       ;
   ```,
@@ -63,6 +64,7 @@
         'if-stmt',
         'assign-stmt',
         'cancel-stmt',
+        'for-stmt',
         'expr-stmt'
       >
     ]
@@ -72,11 +74,12 @@
 
 #rule(<stmt.kinds>)
 Имеются следующие виды команд:
-+ @def:variable-decl-stmt
-+ @def:if-stmt
-+ @def:assign-stmt
-+ @def:cancel-stmt
-+ @def:expr-stmt
+#let stmts = state("stmts", ())
+#let stmt-def(name, ..args) = {
+  def(name, ..args)
+  stmts.update(stmts => stmts + (ref(label("def:" + name)),))
+}
+#context enum(tight: true, ..stmts.final().map(it => [#it.]))
 
 #rule-h(<stmt.variable-decl>)
 == Объявление локальной переменной
@@ -93,7 +96,7 @@
 )
 
 #rule(<stmt.variable-decl.intro>)
-#def("variable-decl-stmt")[Команда объявления локальной переменной] вводит новую @def:scope[область видимости] (@decl.variable.scope), в которой объявляет @def:local-variable[локальную переменную].
+#stmt-def("variable-decl-stmt")[Команда объявления локальной переменной] вводит новую @def:scope[область видимости] (@decl.variable.scope), в которой объявляет @def:local-variable[локальную переменную].
 Синтаксически идентична @def:variable-decl[объявлению переменной].
 
 #rule(<stmt.variable-decl.scopes>)
@@ -133,7 +136,7 @@
 )
 
 #rule(<stmt.if.intro>)
-#def("if-stmt")[Условная команда] позволяет выполнить @def:block[блок] в зависимости от значения условия.
+#stmt-def("if-stmt")[Условная команда] позволяет выполнить @def:block[блок] в зависимости от значения условия.
 Она состоит из выражения условия, ветки then и опциональной ветки else.
 
 #rule(<stmt.if.condition>)
@@ -187,7 +190,7 @@
 )
 
 #rule(<stmt.assign.intro>)
-#def("assign-stmt")[Команда присваивания] устанавливает новое значение по указанному месту.
+#stmt-def("assign-stmt")[Команда присваивания] устанавливает новое значение по указанному месту.
 Синтаксически она состоит из @def:assignee[места для присваивания], @def:assign-operator[оператора присваивания] и выражения присваиваемого значения.
 
 #figure(
@@ -330,7 +333,7 @@
 )
 
 #rule(<stmt.cancel.intro>)
-#def("cancel-stmt")[Команда отмены перехода] отменяет переход между состояниями при @def:function-execution[исполнении функции].
+#stmt-def("cancel-stmt")[Команда отмены перехода] отменяет переход между состояниями при @def:function-execution[исполнении функции].
 
 #rule(<stmt.cancel.sites>)
 Команда отмены перехода может располагаться только в теле @def:function-decl[функции]-@def:method[метода] @def:automaton-decl[автомата].
@@ -343,6 +346,65 @@
 #rule(<stmt.cancel.execution>)
 При исполнении команда отменяет переход между состояниями автомата согласно @def:applicable-shift-rule[применимому] правилу перехода (@decl.automaton.state.transition).
 В результате по завершении исполнения функции @def:automaton-state[именованное состояние] автомата останется прежним.
+
+#rule-h(<stmt.for>)
+== Команда цикла
+
+#figure(
+  ```antlr
+  forStmt
+      :   FOR
+          L_PAREN
+          name=ident
+          IN domain=expr
+          R_PAREN
+          body=block
+      ;
+  ```,
+)
+
+#figure(
+  railroad(
+    ```
+    [
+      `for-stmt`
+      "for"
+      "("
+      'ident'
+      "in"
+      'expr'
+      ")"
+      'block'
+    ]
+    ```,
+  ),
+)
+
+#rule(<stmt.for.intro>)
+#stmt-def("for-stmt")[Команда цикла] производит многократное исполнение тела с различными значениями переменной.
+
+Имя переменной указывается перед `in`.
+После него указывается выражение, определяющее пространство значений переменной.
+
+#rule(<stmt.for.execution>)
+При исполнении команда последовательно выбирает элементы из пространства значений переменной.
+Для каждого элемента переменная цикла принимает это значение и вычисляется тело цикла.
+
+#rule(<stmt.for.typing>)
+Тип выражения должен @def:expr-conformity[соответствовать] #type-expr(ctor(builtin-types.array)($T$)) или #type-expr(ctor(builtin-types.set)($T$)).
+Вводимая переменная имеет тип $T$.
+
+#rule(<stmt.for.scoping>)
+Команда вводит следующие области видимости в @def:current-scope[текущей]:
+- @def:block-scope для переменной цикла
+  - @def:block-scope для тела
+
+В @def:namespace[пространстве имён] переменных области видимости для переменной цикла определяется @def:immutable-variable[неизменяемая] @def:local-variable[локальная переменная] с указанным именем.
+
+#rule(<stmt.for.scoping.current>)
+@def:current-scope[Текущей областью видимости] является:
+- для выражения пространства значений — текущая область видимости команды;
+- для тела — введённая область видимости тела.
 
 #rule-h(<stmt.expr>)
 == Команда вычисления выражения
@@ -360,7 +422,10 @@
 )
 
 #rule(<stmt.expr.intro>)
-#def("expr-stmt")[Команда вычисления выражения] производит вычисление выражения и игнорирует его результат.
+#stmt-def("expr-stmt")[Команда вычисления выражения] производит вычисление выражения и игнорирует его результат.
+
+#rule(<stmt.expr.execution>)
+При исполнении команда производит @def:expr-eval[вычисление] указанного выражения.
 
 #rule(<stmt.expr.typing>)
 Выражение может быть любого типа.

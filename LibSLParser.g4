@@ -332,7 +332,7 @@ procDecl
 
 procModifier
     :   PURE # ProcModifierPure
-    |	STATIC # ProcModifierStatic
+    |   STATIC # ProcModifierStatic
     ;
 
 functionParamList
@@ -550,6 +550,7 @@ stmt
     |   ifStmt # StmtIf
     |   assignStmt # StmtAssign
     |   cancelStmt # StmtCancel
+    |   forStmt # StmtFor
     |   inner=expr SEMICOLON # StmtExpr
     ;
 
@@ -573,10 +574,6 @@ assignee
     |   base=expr L_BRACKET index=expr R_BRACKET # AssigneeIndex
     ;
 
-cancelStmt
-    :   CANCEL SEMICOLON
-    ;
-
 assignOp
     :   EQ # OpAssign
     |   PLUS_EQ # OpAddAssign
@@ -589,6 +586,19 @@ assignOp
     |   CARET_EQ # OpBitXorAssign
     |   L_ANGLE_L_ANGLE_EQ # OpLShiftAssign
     |   R_ANGLE_R_ANGLE_EQ # OpRShiftAssign
+    ;
+
+cancelStmt
+    :   CANCEL SEMICOLON
+    ;
+
+forStmt
+    :   FOR
+        L_PAREN
+        name=ident
+        IN domain=expr
+        R_PAREN
+        body=block
     ;
 
 exprList
